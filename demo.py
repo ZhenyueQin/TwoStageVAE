@@ -171,7 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('--network-structure', type=str, default='Infogan')
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--write-iteration', type=int, default=600)
-    parser.add_argument('--latent-dim', type=int, default=64)
+    parser.add_argument('--latent-dim', type=int, default=2)
 
     parser.add_argument('--second-dim', type=int, default=1024)
     parser.add_argument('--second-depth', type=int, default=3)

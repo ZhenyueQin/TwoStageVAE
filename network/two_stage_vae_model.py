@@ -34,8 +34,8 @@ class TwoStageVaeModel(object):
 
         self.kl_loss1 = tf.reduce_sum(tf.square(self.mu_z) + tf.square(self.sd_z) - 2 * self.logsd_z - 1) / 2.0 / float(
             self.batch_size)
-        # self.gen_loss1 = tf.reduce_sum(tf.square((self.x - self.x_hat) / self.gamma_x) / 2.0 + self.loggamma_x + HALF_LOG_TWO_PI) / float(self.batch_size)
-        self.gen_loss1 = tf.reduce_sum(tf.square((self.x - self.x_hat) / self.gamma_x)) / float(self.batch_size)
+        self.gen_loss1 = tf.reduce_sum(tf.square((self.x - self.x_hat) / self.gamma_x) / 2.0 + self.loggamma_x + HALF_LOG_TWO_PI) / float(self.batch_size)
+        # self.gen_loss1 = tf.reduce_sum(tf.square((self.x - self.x_hat) / self.gamma_x)) / float(self.batch_size)
         self.loss1 = self.kl_loss1 + self.gen_loss1
 
         self.kl_loss2 = tf.reduce_sum(tf.square(self.mu_u) + tf.square(self.sd_u) - 2 * self.logsd_u - 1) / 2.0 / float(
