@@ -44,45 +44,69 @@ def main():
     iteration_per_epoch = num_sample // args.batch_size 
     if not args.val:
         # first stage
-        for epoch in range(args.epochs):
+        for epoch in range(args.epochs+1):
             np.random.shuffle(x)
             lr = args.lr if args.lr_epochs <= 0 else args.lr * math.pow(args.lr_fac, math.floor(float(epoch) / float(args.lr_epochs)))
             epoch_loss = 0
+            gen_l_sum = 0
+            kl_l_sum = 0
             for j in range(iteration_per_epoch):
                 image_batch = x[j*args.batch_size:(j+1)*args.batch_size]
-                loss = model.step(1, image_batch, lr, sess, writer, args.write_iteration)
-                epoch_loss += loss 
+                loss, gen_l, kl_l = model.step(1, image_batch, lr, sess, writer, args.write_iteration)
+                epoch_loss += loss
+                gen_l_sum += gen_l
+                kl_l_sum += kl_l
             epoch_loss /= iteration_per_epoch
+            gen_l_sum /= iteration_per_epoch
+            kl_l_sum /= iteration_per_epoch
 
             print('Date: {date}\t'
                   'Epoch: [Stage 1][{0}/{1}]\t'
-                  'Loss: {2:.4f}.'.format(epoch, args.epochs, epoch_loss, date=time.strftime('%Y-%m-%d %H:%M:%S')))
+                  'Loss: {2:.4f}'.format(epoch, args.epochs, epoch_loss, date=time.strftime('%Y-%m-%d %H:%M:%S')))
+            print('Gen Loss: {:.4f}\tKL Loss: {:.4f}'.format(gen_l_sum, kl_l_sum))
+
+            if epoch % args.save_interval == 0:
+                test(model, sess, exp_folder, epoch, stage=1)
+                saver.save(sess, os.path.join(model_path, 'stage1'))
+
         saver.save(sess, os.path.join(model_path, 'stage1'))
 
         # second stage
         mu_z, sd_z = model.extract_posterior(sess, x)
         idx = np.arange(num_sample)
-        for epoch in range(args.epochs2):
+        for epoch in range(args.epochs2+1):
             np.random.shuffle(idx)
             mu_z = mu_z[idx]
             sd_z = sd_z[idx]
             lr = args.lr2 if args.lr_epochs2 <= 0 else args.lr2 * math.pow(args.lr_fac2, math.floor(float(epoch) / float(args.lr_epochs2)))
             epoch_loss = 0
+            gen_l_sum = 0
+            kl_l_sum = 0
             for j in range(iteration_per_epoch):
                 mu_z_batch = mu_z[j*args.batch_size:(j+1)*args.batch_size]
                 sd_z_batch = sd_z[j*args.batch_size:(j+1)*args.batch_size]
                 z_batch = mu_z_batch + sd_z_batch * np.random.normal(0, 1, [args.batch_size, args.latent_dim])
-                loss = model.step(2, z_batch, lr, sess, writer, args.write_iteration)
-                epoch_loss += loss 
+                loss, gen_l, kl_l = model.step(2, z_batch, lr, sess, writer, args.write_iteration)
+                epoch_loss += loss
+                gen_l_sum += gen_l
+                kl_l_sum += kl_l
             epoch_loss /= iteration_per_epoch
+            gen_l_sum /= iteration_per_epoch
+            kl_l_sum /= iteration_per_epoch
 
             print('Date: {date}\t'
                   'Epoch: [Stage 2][{0}/{1}]\t'
-                  'Loss: {2:.4f}.'.format(epoch, args.epochs2, epoch_loss, date=time.strftime('%Y-%m-%d %H:%M:%S')))
+                  'Loss: {2:.4f}\t.'.format(epoch, args.epochs2, epoch_loss, date=time.strftime('%Y-%m-%d %H:%M:%S')))
+
+            if epoch % args.save_interval == 0:
+                test(model, sess, exp_folder, epoch, stage=2)
+                saver.save(sess, os.path.join(model_path, 'stage2'))
         saver.save(sess, os.path.join(model_path, 'stage2'))
     else:
         saver.restore(sess, os.path.join(model_path, 'stage2'))
 
+
+def test(model, sess, exp_folder, epoch, stage):
     # test dataset 
     x, side_length, channels = load_test_dataset(args.dataset, args.root_folder)
     np.random.shuffle(x)
@@ -96,9 +120,9 @@ def main():
     img_recons_sample = stich_imgs(img_recons)
     img_gens1_sample = stich_imgs(img_gens1)
     img_gens2_sample = stich_imgs(img_gens2)
-    plt.imsave(os.path.join(exp_folder, 'recon_sample.jpg'), img_recons_sample)
-    plt.imsave(os.path.join(exp_folder, 'gen1_sample.jpg'), img_gens1_sample)
-    plt.imsave(os.path.join(exp_folder, 'gen2_sample.jpg'), img_gens2_sample)
+    plt.imsave(os.path.join(exp_folder, 'recon_sample_stage_{}_epoch_{}.jpg'.format(stage, epoch)), img_recons_sample)
+    plt.imsave(os.path.join(exp_folder, 'gen1_sample_stage_{}_epoch_{}.jpg'.format(stage, epoch)), img_gens1_sample)
+    plt.imsave(os.path.join(exp_folder, 'gen2_sample_stage_{}_epoch_{}.jpg'.format(stage, epoch)), img_gens2_sample)
 
     # calculating FID score
     tf.reset_default_graph()
@@ -137,7 +161,7 @@ def stich_imgs(x, img_per_row=10, img_per_col=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root-folder', type=str, default='.')
+    parser.add_argument('--root-folder', type=str, default='../two-stage-datasets')
     parser.add_argument('--output-path', type=str, default='./experiments')
     parser.add_argument('--exp-name', type=str, default='debug')
 
@@ -170,6 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr-fac2', type=float, default=0.5)
     
     parser.add_argument('--val', default=False, action='store_true')
+    parser.add_argument('--save_interval', default=10)
 
     args = parser.parse_args()
     print(args)

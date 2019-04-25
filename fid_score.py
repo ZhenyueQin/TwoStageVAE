@@ -5,10 +5,8 @@ import numpy as np
 from scipy import linalg
 from six.moves import range, urllib
 import tensorflow as tf
-import numpy as np
 import os
 import gzip, pickle
-import tensorflow as tf
 from scipy.misc import imread
 import urllib
 
@@ -24,6 +22,7 @@ import matplotlib.pyplot as plt
 
 # =================================================================================
 # tensorflow fid score
+
 
 def create_inception_graph(pth):
     """Creates a graph from saved GraphDef file."""
